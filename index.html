@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Personal Hub</title>
+<style>
+  :root{
+    --bg:#0f1115;
+    --panel:#171a21;
+    --panel2:#1e222b;
+    --border:#2a2f3a;
+    --text:#e8eaed;
+    --muted:#9aa3b2;
+    --accent:#5b8cff;
+    --accent2:#7c5cff;
+    --good:#3ecf8e;
+    --warn:#f5a623;
+    --bad:#ef5d5d;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:linear-gradient(135deg,#a6c1ee 0%,#fbc2eb 45%,#fdcb82 100%);
+    background-attachment:fixed;
+    color:var(--text);
+    min-height:100vh;
+  }
+  header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:18px 28px;
+    border-bottom:1px solid var(--border);
+    background:var(--panel);
+    box-shadow:0 2px 14px rgba(0,0,0,.08);
+    flex-wrap:wrap;
+    gap:12px;
+  }
+  header h1{
+    font-size:20px;
+    margin:0;
+    font-weight:600;
+  }
+  .tabs{
+    display:flex;
+    gap:8px;
+  }
+  .tab-btn{
+    background:transparent;
+    border:1px solid var(--border);
+    color:var(--muted);
+    padding:8px 16px;
+    border-radius:var(--radius);
+    cursor:pointer;
+    font-size:14px;
+    font-weight:500;
+    transition:all .15s;
+  }
+  .tab-btn:hover{ color:var(--text); border-color:#3a4150; }
+  .tab-btn.active{
+    background:var(--accent);
+    color:#fff;
+    border-color:var(--accent);
+  }
+  .header-actions{
+    display:flex;
+    gap:8px;
+  }
+  .icon-btn{
+    background:var(--panel2);
+    border:1px solid var(--border);
+    color:var(--muted);
+    padding:8px 12px;
+    border-radius:var(--radius);
+    cursor:pointer;
+    font-size:13px;
+  }
+  .icon-btn:hover{ color:var(--text); border-color:#3a4150; }
+  main{
+    max-width:920px;
+    margin:0 auto;
+    padding:28px 20px 80px;
+  }
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:20px;
+    margin-bottom:20px;
+  }
+  .panel h2{
+    margin:0 0 14px;
+    font-size:15px;
+    color:var(--muted);
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+  }
+  .grid.cols-3{ grid-template-columns:1fr 1fr 1fr; }
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  .field.full{ grid-column:1 / -1; }
+  label{ font-size:12px; color:var(--muted); }
+  input, select, textarea{
+    background:var(--panel2);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:9px 10px;
+    border-radius:8px;
+    font-size:14px;
+    font-family:inherit;
+  }
+  input:focus, select:focus, textarea:focus{
+    outline:none;
+    border-color:var(--accent);
+  }
+  textarea{ resize:vertical; min-height:44px; }
+  .form-actions{
+    display:flex;
+    gap:10px;
+    margin-top:14px;
+  }
+  button.primary{
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    color:#fff;
+    border:none;
+    padding:10px 20px;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:14px;
+    font-weight:600;
+  }
+  button.primary:hover{ filter:brightness(1.08); }
+  button.secondary{
+    background:transparent;
+    border:1px solid var(--border);
+    color:var(--muted);
+    padding:10px 16px;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:14px;
+  }
+  button.secondary:hover{ color:var(--text); }
+  .list{ display:flex; flex-direction:column; gap:10px; }
+  .item{
+    background:var(--panel2);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:14px 16px;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:12px;
+  }
+  .item.overdue{ border-color:var(--bad); box-shadow:0 0 0 1px rgba(239,93,93,.25) inset; }
+  .item.due-soon{ border-color:var(--warn); box-shadow:0 0 0 1px rgba(245,166,35,.25) inset; }
+  .item-main{ flex:1; min-width:0; }
+  .item-title{ font-weight:600; font-size:15px; margin-bottom:3px; word-break:break-word; }
+  .item-meta{ font-size:12.5px; color:var(--muted); display:flex; gap:10px; flex-wrap:wrap; margin-bottom:4px; }
+  .item-notes{ font-size:13px; color:#c4c9d4; white-space:pre-wrap; word-break:break-word; }
+  .badge{
+    font-size:11px;
+    font-weight:700;
+    padding:2px 8px;
+    border-radius:20px;
+    text-transform:uppercase;
+    letter-spacing:.03em;
+  }
+  .badge.overdue{ background:rgba(239,93,93,.18); color:var(--bad); }
+  .badge.due-soon{ background:rgba(245,166,35,.18); color:var(--warn); }
+  .badge.upcoming{ background:rgba(91,140,255,.18); color:var(--accent); }
+  .badge.done{ background:rgba(62,207,142,.18); color:var(--good); }
+  .item-actions{ display:flex; gap:6px; flex-shrink:0; }
+  .item-actions button{
+    background:transparent;
+    border:1px solid var(--border);
+    color:var(--muted);
+    padding:6px 10px;
+    border-radius:7px;
+    cursor:pointer;
+    font-size:12.5px;
+  }
+  .item-actions button:hover{ color:var(--text); }
+  .item-actions button.danger:hover{ color:var(--bad); border-color:var(--bad); }
+  .empty{ color:var(--muted); font-size:14px; padding:20px; text-align:center; }
+  .link-card a.url{ color:var(--accent); font-size:12.5px; text-decoration:none; word-break:break-all; }
+  .link-card a.url:hover{ text-decoration:underline; }
+  .tag{
+    display:inline-block;
+    font-size:11px;
+    background:rgba(124,92,255,.18);
+    color:#b7a8ff;
+    padding:2px 8px;
+    border-radius:20px;
+    margin-top:4px;
+  }
+  .search-bar{ margin-bottom:14px; }
+  #toast{
+    position:fixed;
+    bottom:24px;
+    right:24px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    z-index:999;
+  }
+  .toast-item{
+    background:var(--panel2);
+    border:1px solid var(--accent);
+    color:var(--text);
+    padding:12px 16px;
+    border-radius:10px;
+    font-size:13.5px;
+    box-shadow:0 8px 24px rgba(0,0,0,.4);
+    max-width:300px;
+    animation:slideIn .2s ease-out;
+  }
+  @keyframes slideIn{ from{ transform:translateX(20px); opacity:0; } to{ transform:translateX(0); opacity:1; } }
+  .hidden{ display:none !important; }
+  .hint{ font-size:12px; color:var(--muted); margin-top:8px; }
+  .vault-filter-row{ display:flex; gap:10px; margin-bottom:14px; }
+  .vault-filter-row input{ flex:1; margin-bottom:0; }
+  .vault-filter-row select{ width:170px; }
+  .vault-thumb{
+    width:60px;
+    height:60px;
+    object-fit:cover;
+    border-radius:8px;
+    border:1px solid var(--border);
+    background:var(--panel);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-shrink:0;
+  }
+  .vault-thumb-icon{ font-size:26px; }
+  .tag.medical{ background:rgba(239,93,93,.18); color:var(--bad); }
+  .tag.id-ic{ background:rgba(91,140,255,.18); color:var(--accent); }
+  .tag.insurance{ background:rgba(62,207,142,.18); color:var(--good); }
+  .tag.financial{ background:rgba(245,166,35,.18); color:var(--warn); }
+  @media (max-width:600px){
+    .grid, .grid.cols-3{ grid-template-columns:1fr; }
+    header{ padding:14px 16px; }
+    main{ padding:20px 14px 60px; }
+    .vault-filter-row{ flex-direction:column; }
+    .vault-filter-row select{ width:100%; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🗂️ Personal Hub</h1>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="reminders" onclick="switchTab('reminders')">Reminders</button>
+    <button class="tab-btn" data-tab="links" onclick="switchTab('links')">Link Library</button>
+    <button class="tab-btn" data-tab="vault" onclick="switchTab('vault')">🔒 Vault</button>
+  </div>
+  <div class="header-actions">
+    <button class="icon-btn" onclick="enableNotifications()">🔔 Enable alerts</button>
+    <button class="icon-btn" id="exportBtn" onclick="exportData()">⬆ Export Reminders</button>
+    <button class="icon-btn" id="importBtn" onclick="document.getElementById('importFile').click()">⬇ Import Reminders</button>
+    <input type="file" id="importFile" accept=".json" class="hidden" onchange="importData(event)">
+  </div>
+</header>
+
+<main>
+
+  <!-- REMINDERS TAB -->
+  <section id="tab-reminders">
+    <div class="panel">
+      <h2 id="reminderFormTitle">New Reminder</h2>
+      <div class="grid cols-3">
+        <div class="field full">
+          <label>Title</label>
+          <input id="r-title" type="text" placeholder="e.g. Pay rent, Call dentist, Team standup">
+        </div>
+        <div class="field">
+          <label>Date</label>
+          <input id="r-date" type="date">
+        </div>
+        <div class="field">
+          <label>Time</label>
+          <input id="r-time" type="time">
+        </div>
+        <div class="field">
+          <label>Repeat</label>
+          <select id="r-repeat">
+            <option value="none">Does not repeat</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+        <div class="field full">
+          <label>Notes (optional)</label>
+          <textarea id="r-notes" placeholder="Any extra detail..."></textarea>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="primary" onclick="saveReminder()" id="r-save-btn">Add Reminder</button>
+        <button class="secondary hidden" id="r-cancel-btn" onclick="cancelReminderEdit()">Cancel</button>
+      </div>
+      <div class="hint">Alerts fire as a browser notification + sound while this page is open, and are always highlighted on screen either way.</div>
+    </div>
+
+    <div class="panel">
+      <h2>Upcoming &amp; Past</h2>
+      <div id="reminderList" class="list"></div>
+    </div>
+  </section>
+
+  <!-- LINKS TAB -->
+  <section id="tab-links" class="hidden">
+    <div class="panel">
+      <h2 id="linkFormTitle">New Link</h2>
+      <div class="grid">
+        <div class="field">
+          <label>Name</label>
+          <input id="l-name" type="text" placeholder="e.g. Figma, Notion, GitHub">
+        </div>
+        <div class="field">
+          <label>Category (optional)</label>
+          <input id="l-category" type="text" placeholder="e.g. Design, Productivity">
+        </div>
+        <div class="field full">
+          <label>URL</label>
+          <input id="l-url" type="text" placeholder="https://...">
+        </div>
+        <div class="field full">
+          <label>Key function / description</label>
+          <textarea id="l-desc" placeholder="What is this for? e.g. Collaborative UI design tool"></textarea>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="primary" onclick="saveLink()" id="l-save-btn">Add Link</button>
+        <button class="secondary hidden" id="l-cancel-btn" onclick="cancelLinkEdit()">Cancel</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Saved Links</h2>
+      <input class="search-bar" id="linkSearch" type="text" placeholder="Search by name, category, or description..." oninput="renderLinks()" style="width:100%;">
+      <div id="linkList" class="list"></div>
+    </div>
+  </section>
+
+  <!-- VAULT TAB -->
+  <section id="tab-vault" class="hidden">
+    <div class="panel">
+      <h2 id="vaultFormTitle">Add to Vault</h2>
+      <div class="grid">
+        <div class="field">
+          <label>Title (optional — defaults to file name)</label>
+          <input id="v-title" type="text" placeholder="e.g. Passport, Blood test results">
+        </div>
+        <div class="field">
+          <label>Category</label>
+          <select id="v-category">
+            <option value="Medical">Medical</option>
+            <option value="ID / IC">ID / IC</option>
+            <option value="Insurance">Insurance</option>
+            <option value="Financial">Financial</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="field full">
+          <label>Notes (optional)</label>
+          <textarea id="v-notes" placeholder="Any extra detail..."></textarea>
+        </div>
+        <div class="field full">
+          <label>File(s) — images or PDF</label>
+          <input id="v-file" type="file" accept="image/*,application/pdf" multiple>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="primary" onclick="saveVaultItem()" id="v-save-btn">Add to Vault</button>
+        <button class="secondary hidden" id="v-cancel-btn" onclick="cancelVaultEdit()">Cancel</button>
+      </div>
+      <div class="hint">Files are stored only in this browser (IndexedDB) and are not encrypted or synced automatically. Use "Export Vault Backup" below to download a backup file you can keep somewhere safe, move to another device, or hand to Claude to upload to your connected Google Drive.</div>
+    </div>
+
+    <div class="panel">
+      <h2>Saved Documents</h2>
+      <div class="vault-filter-row">
+        <input id="vaultSearch" type="text" placeholder="Search by title, category, or notes..." oninput="renderVault()">
+        <select id="vaultCategoryFilter" onchange="renderVault()">
+          <option value="">All categories</option>
+          <option value="Medical">Medical</option>
+          <option value="ID / IC">ID / IC</option>
+          <option value="Insurance">Insurance</option>
+          <option value="Financial">Financial</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div id="vaultList" class="list"></div>
+    </div>
+  </section>
+
+</main>
+
+<footer style="text-align:center; padding:18px 16px 30px;">
+  <span style="display:inline-block; background:var(--panel); color:var(--muted); border:1px solid var(--border); padding:6px 16px; border-radius:20px; font-size:12.5px;">© 2026 NCP. Personal Hub. For personal, non-commercial use only.</span>
+</footer>
+
+<div id="toast"></div>
+
+<script>
+  // ---------- State ----------
+  const STORAGE_KEY = 'personalHub.v1';
+  let editingReminderId = null;
+  let editingLinkId = null;
+  let notificationsEnabled = false;
+
+  function loadState(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw) return JSON.parse(raw);
+    }catch(e){ console.warn('Failed to parse stored data', e); }
+    return { reminders: [], links: [] };
+  }
+  let state = loadState();
+
+  function saveState(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  function uid(){
+    return Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+  }
+
+  // ---------- Tabs ----------
+  let currentTab = 'reminders';
+  function switchTab(tab){
+    currentTab = tab;
+    document.getElementById('tab-reminders').classList.toggle('hidden', tab !== 'reminders');
+    document.getElementById('tab-links').classList.toggle('hidden', tab !== 'links');
+    document.getElementById('tab-vault').classList.toggle('hidden', tab !== 'vault');
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    const label = tab === 'reminders' ? 'Reminders' : tab === 'links' ? 'Links' : 'Vault';
+    document.getElementById('exportBtn').textContent = '⬆ Export ' + label;
+    document.getElementById('importBtn').textContent = '⬇ Import ' + label;
+  }
+
+  // ---------- Toast ----------
+  function showToast(msg){
+    const wrap = document.getElementById('toast');
+    const el = document.createElement('div');
+    el.className = 'toast-item';
+    el.textContent = msg;
+    wrap.appendChild(el);
+    setTimeout(() => el.remove(), 6000);
+  }
+
+  // ---------- Notifications ----------
+  function enableNotifications(){
+    if(!('Notification' in window)){
+      showToast('Browser notifications are not supported here. Visual alerts will still work.');
+      return;
+    }
+    Notification.requestPermission().then(perm => {
+      notificationsEnabled = perm === 'granted';
+      showToast(notificationsEnabled ? 'Notifications enabled.' : 'Notifications not granted — visual alerts still active.');
+    });
+  }
+
+  function playBeep(){
+    try{
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.value = 880;
+      g.gain.value = 0.15;
+      o.connect(g); g.connect(ctx.destination);
+      o.start();
+      setTimeout(() => { o.stop(); ctx.close(); }, 350);
+    }catch(e){ /* audio not available, ignore */ }
+  }
+
+  function fireAlert(reminder){
+    playBeep();
+    if(notificationsEnabled && 'Notification' in window && Notification.permission === 'granted'){
+      new Notification('Reminder: ' + reminder.title, {
+        body: reminder.notes || (reminder.date + ' ' + reminder.time)
+      });
+    }
+    showToast('⏰ ' + reminder.title);
+  }
+
+  // ---------- Reminders ----------
+  function getReminderDateTime(r){
+    return new Date(r.date + 'T' + (r.time || '00:00'));
+  }
+
+  function nextOccurrence(r){
+    const d = getReminderDateTime(r);
+    if(r.repeat === 'daily') d.setDate(d.getDate() + 1);
+    else if(r.repeat === 'weekly') d.setDate(d.getDate() + 7);
+    else if(r.repeat === 'monthly') d.setMonth(d.getMonth() + 1);
+    else return null;
+    return { date: d.toISOString().slice(0,10), time: r.time };
+  }
+
+  function saveReminder(){
+    const title = document.getElementById('r-title').value.trim();
+    const date = document.getElementById('r-date').value;
+    const time = document.getElementById('r-time').value || '00:00';
+    const repeat = document.getElementById('r-repeat').value;
+    const notes = document.getElementById('r-notes').value.trim();
+
+    if(!title || !date){
+      showToast('Please enter at least a title and date.');
+      return;
+    }
+
+    if(editingReminderId){
+      const r = state.reminders.find(x => x.id === editingReminderId);
+      if(r){
+        r.title = title; r.date = date; r.time = time; r.repeat = repeat; r.notes = notes; r.fired = false;
+      }
+      cancelReminderEdit();
+    } else {
+      state.reminders.push({ id: uid(), title, date, time, repeat, notes, fired: false, createdAt: Date.now() });
+    }
+    saveState();
+    clearReminderForm();
+    renderReminders();
+  }
+
+  function clearReminderForm(){
+    document.getElementById('r-title').value = '';
+    document.getElementById('r-date').value = '';
+    document.getElementById('r-time').value = '';
+    document.getElementById('r-repeat').value = 'none';
+    document.getElementById('r-notes').value = '';
+  }
+
+  function editReminder(id){
+    const r = state.reminders.find(x => x.id === id);
+    if(!r) return;
+    editingReminderId = id;
+    document.getElementById('r-title').value = r.title;
+    document.getElementById('r-date').value = r.date;
+    document.getElementById('r-time').value = r.time;
+    document.getElementById('r-repeat').value = r.repeat;
+    document.getElementById('r-notes').value = r.notes || '';
+    document.getElementById('reminderFormTitle').textContent = 'Edit Reminder';
+    document.getElementById('r-save-btn').textContent = 'Update Reminder';
+    document.getElementById('r-cancel-btn').classList.remove('hidden');
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  function cancelReminderEdit(){
+    editingReminderId = null;
+    document.getElementById('reminderFormTitle').textContent = 'New Reminder';
+    document.getElementById('r-save-btn').textContent = 'Add Reminder';
+    document.getElementById('r-cancel-btn').classList.add('hidden');
+    clearReminderForm();
+  }
+
+  function deleteReminder(id){
+    if(!confirm('Delete this reminder?')) return;
+    state.reminders = state.reminders.filter(x => x.id !== id);
+    saveState();
+    renderReminders();
+  }
+
+  function snoozeReminder(id, minutes){
+    const r = state.reminders.find(x => x.id === id);
+    if(!r) return;
+    const d = getReminderDateTime(r);
+    d.setMinutes(d.getMinutes() + minutes);
+    r.date = d.toISOString().slice(0,10);
+    r.time = d.toTimeString().slice(0,5);
+    r.fired = false;
+    saveState();
+    renderReminders();
+  }
+
+  function reminderStatus(r, now){
+    const dt = getReminderDateTime(r);
+    const diffMs = dt - now;
+    if(diffMs < 0) return r.fired ? 'done' : 'overdue';
+    if(diffMs <= 15*60*1000) return 'due-soon';
+    return 'upcoming';
+  }
+
+  function renderReminders(){
+    const list = document.getElementById('reminderList');
+    const now = new Date();
+    const sorted = [...state.reminders].sort((a,b) => getReminderDateTime(a) - getReminderDateTime(b));
+    if(sorted.length === 0){
+      list.innerHTML = '<div class="empty">No reminders yet. Add one above.</div>';
+      return;
+    }
+    list.innerHTML = sorted.map(r => {
+      const status = reminderStatus(r, now);
+      const dt = getReminderDateTime(r);
+      const dateStr = dt.toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
+      const timeStr = dt.toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit' });
+      const repeatLabel = r.repeat !== 'none' ? ('🔁 ' + r.repeat) : '';
+      const badgeClass = status === 'overdue' ? 'overdue' : status === 'due-soon' ? 'due-soon' : status === 'done' ? 'done' : 'upcoming';
+      const badgeText = status === 'overdue' ? 'Overdue' : status === 'due-soon' ? 'Due soon' : status === 'done' ? 'Done' : 'Upcoming';
+      const itemClass = status === 'overdue' ? 'overdue' : status === 'due-soon' ? 'due-soon' : '';
+      return `
+        <div class="item ${itemClass}">
+          <div class="item-main">
+            <div class="item-title">${escapeHtml(r.title)} <span class="badge ${badgeClass}">${badgeText}</span></div>
+            <div class="item-meta"><span>📅 ${dateStr}</span><span>🕐 ${timeStr}</span>${repeatLabel ? '<span>'+repeatLabel+'</span>' : ''}</div>
+            ${r.notes ? `<div class="item-notes">${escapeHtml(r.notes)}</div>` : ''}
+          </div>
+          <div class="item-actions">
+            ${status !== 'done' ? `<button onclick="snoozeReminder('${r.id}', 10)">Snooze 10m</button>` : ''}
+            <button onclick="editReminder('${r.id}')">Edit</button>
+            <button class="danger" onclick="deleteReminder('${r.id}')">Delete</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function checkDueReminders(){
+    const now = new Date();
+    let changed = false;
+    state.reminders.forEach(r => {
+      const dt = getReminderDateTime(r);
+      if(!r.fired && dt <= now){
+        fireAlert(r);
+        const next = nextOccurrence(r);
+        if(next){
+          r.date = next.date;
+          r.time = next.time;
+          r.fired = false;
+        } else {
+          r.fired = true;
+        }
+        changed = true;
+      }
+    });
+    if(changed){ saveState(); renderReminders(); }
+  }
+
+  // ---------- Links ----------
+  function saveLink(){
+    const name = document.getElementById('l-name').value.trim();
+    const url = document.getElementById('l-url').value.trim();
+    const category = document.getElementById('l-category').value.trim();
+    const desc = document.getElementById('l-desc').value.trim();
+
+    if(!name || !url){
+      showToast('Please enter at least a name and URL.');
+      return;
+    }
+
+    if(editingLinkId){
+      const l = state.links.find(x => x.id === editingLinkId);
+      if(l){ l.name = name; l.url = url; l.category = category; l.description = desc; }
+      cancelLinkEdit();
+    } else {
+      state.links.push({ id: uid(), name, url, category, description: desc, createdAt: Date.now() });
+    }
+    saveState();
+    clearLinkForm();
+    renderLinks();
+  }
+
+  function clearLinkForm(){
+    document.getElementById('l-name').value = '';
+    document.getElementById('l-url').value = '';
+    document.getElementById('l-category').value = '';
+    document.getElementById('l-desc').value = '';
+  }
+
+  function editLink(id){
+    const l = state.links.find(x => x.id === id);
+    if(!l) return;
+    editingLinkId = id;
+    document.getElementById('l-name').value = l.name;
+    document.getElementById('l-url').value = l.url;
+    document.getElementById('l-category').value = l.category || '';
+    document.getElementById('l-desc').value = l.description || '';
+    document.getElementById('linkFormTitle').textContent = 'Edit Link';
+    document.getElementById('l-save-btn').textContent = 'Update Link';
+    document.getElementById('l-cancel-btn').classList.remove('hidden');
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  function cancelLinkEdit(){
+    editingLinkId = null;
+    document.getElementById('linkFormTitle').textContent = 'New Link';
+    document.getElementById('l-save-btn').textContent = 'Add Link';
+    document.getElementById('l-cancel-btn').classList.add('hidden');
+    clearLinkForm();
+  }
+
+  function deleteLink(id){
+    if(!confirm('Delete this link?')) return;
+    state.links = state.links.filter(x => x.id !== id);
+    saveState();
+    renderLinks();
+  }
+
+  function normalizeUrl(url){
+    if(!/^https?:\/\//i.test(url)) return 'https://' + url;
+    return url;
+  }
+
+  function renderLinks(){
+    const list = document.getElementById('linkList');
+    const q = (document.getElementById('linkSearch').value || '').toLowerCase();
+    let items = [...state.links].sort((a,b) => a.name.localeCompare(b.name));
+    if(q){
+      items = items.filter(l =>
+        l.name.toLowerCase().includes(q) ||
+        (l.category||'').toLowerCase().includes(q) ||
+        (l.description||'').toLowerCase().includes(q)
+      );
+    }
+    if(items.length === 0){
+      list.innerHTML = '<div class="empty">No links saved yet.</div>';
+      return;
+    }
+    list.innerHTML = items.map(l => `
+      <div class="item link-card">
+        <div class="item-main">
+          <div class="item-title">${escapeHtml(l.name)}</div>
+          <a class="url" href="${escapeHtml(normalizeUrl(l.url))}" target="_blank" rel="noopener noreferrer">${escapeHtml(l.url)}</a>
+          ${l.description ? `<div class="item-notes" style="margin-top:6px;">${escapeHtml(l.description)}</div>` : ''}
+          ${l.category ? `<span class="tag">${escapeHtml(l.category)}</span>` : ''}
+        </div>
+        <div class="item-actions">
+          <button onclick="editLink('${l.id}')">Edit</button>
+          <button class="danger" onclick="deleteLink('${l.id}')">Delete</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ---------- Vault (medical records, ID/IC, personal docs) ----------
+  const VAULT_DB_NAME = 'personalHubVaultDB';
+  const VAULT_STORE = 'files';
+  let vaultDB = null;
+  let vaultItems = [];
+  let vaultObjectUrls = [];
+  let editingVaultId = null;
+
+  function openVaultDB(){
+    return new Promise((resolve, reject) => {
+      if(!('indexedDB' in window)){ reject(new Error('IndexedDB not supported in this browser')); return; }
+      const req = indexedDB.open(VAULT_DB_NAME, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if(!db.objectStoreNames.contains(VAULT_STORE)){
+          db.createObjectStore(VAULT_STORE, { keyPath: 'id' });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  function vaultStore(mode){
+    return vaultDB.transaction(VAULT_STORE, mode).objectStore(VAULT_STORE);
+  }
+
+  function vaultPut(item){
+    return new Promise((resolve, reject) => {
+      const req = vaultStore('readwrite').put(item);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  function vaultDeleteDB(id){
+    return new Promise((resolve, reject) => {
+      const req = vaultStore('readwrite').delete(id);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  function vaultGetAllDB(){
+    return new Promise((resolve, reject) => {
+      const req = vaultStore('readonly').getAll();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function loadVaultItems(){
+    try{
+      vaultDB = await openVaultDB();
+      vaultItems = await vaultGetAllDB();
+    }catch(e){
+      console.warn('Vault storage unavailable', e);
+      vaultItems = [];
+      showToast('Vault storage is unavailable in this browser.');
+    }
+    renderVault();
+  }
+
+  function formatBytes(bytes){
+    if(!bytes) return '0 B';
+    const units = ['B','KB','MB','GB'];
+    let i = 0, n = bytes;
+    while(n >= 1024 && i < units.length - 1){ n /= 1024; i++; }
+    return n.toFixed(i === 0 ? 0 : 1) + ' ' + units[i];
+  }
+
+  function categorySlug(cat){
+    return (cat || 'other').toLowerCase().replace(/[^a-z]+/g, '-').replace(/^-|-$/g, '');
+  }
+
+  async function saveVaultItem(){
+    const titleInput = document.getElementById('v-title').value.trim();
+    const category = document.getElementById('v-category').value;
+    const notes = document.getElementById('v-notes').value.trim();
+    const fileInput = document.getElementById('v-file');
+    const files = fileInput.files;
+
+    if(editingVaultId){
+      const v = vaultItems.find(x => x.id === editingVaultId);
+      if(v){
+        v.name = titleInput || v.name;
+        v.category = category;
+        v.notes = notes;
+        try{ await vaultPut(v); }catch(e){ showToast('Could not update document.'); return; }
+      }
+      cancelVaultEdit();
+      renderVault();
+      return;
+    }
+
+    if(!files || files.length === 0){
+      showToast('Please choose at least one file.');
+      return;
+    }
+
+    const MAX_WARN = 15 * 1024 * 1024;
+    try{
+      for(const file of files){
+        if(file.size > MAX_WARN){
+          showToast('Note: "' + file.name + '" is large (' + formatBytes(file.size) + ') — it may take a moment to save.');
+        }
+        const item = {
+          id: uid(),
+          name: (titleInput && files.length === 1) ? titleInput : file.name,
+          category,
+          notes,
+          mimeType: file.type || 'application/octet-stream',
+          size: file.size,
+          createdAt: Date.now(),
+          file: file
+        };
+        await vaultPut(item);
+        vaultItems.push(item);
+      }
+      showToast('Saved to vault.');
+    }catch(e){
+      showToast('Could not save one or more files: ' + e.message);
+    }
+    clearVaultForm();
+    renderVault();
+  }
+
+  function clearVaultForm(){
+    document.getElementById('v-title').value = '';
+    document.getElementById('v-category').value = 'Medical';
+    document.getElementById('v-notes').value = '';
+    document.getElementById('v-file').value = '';
+  }
+
+  function editVaultItem(id){
+    const v = vaultItems.find(x => x.id === id);
+    if(!v) return;
+    editingVaultId = id;
+    document.getElementById('v-title').value = v.name;
+    document.getElementById('v-category').value = v.category;
+    document.getElementById('v-notes').value = v.notes || '';
+    document.getElementById('v-file').value = '';
+    document.getElementById('v-file').disabled = true;
+    document.getElementById('vaultFormTitle').textContent = 'Edit Document (metadata only — delete & re-add to replace the file)';
+    document.getElementById('v-save-btn').textContent = 'Update';
+    document.getElementById('v-cancel-btn').classList.remove('hidden');
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  function cancelVaultEdit(){
+    editingVaultId = null;
+    document.getElementById('vaultFormTitle').textContent = 'Add to Vault';
+    document.getElementById('v-save-btn').textContent = 'Add to Vault';
+    document.getElementById('v-cancel-btn').classList.add('hidden');
+    document.getElementById('v-file').disabled = false;
+    clearVaultForm();
+  }
+
+  async function deleteVaultItem(id){
+    if(!confirm('Delete this document? This cannot be undone.')) return;
+    try{
+      await vaultDeleteDB(id);
+      vaultItems = vaultItems.filter(x => x.id !== id);
+      renderVault();
+    }catch(e){
+      showToast('Could not delete document.');
+    }
+  }
+
+  function downloadVaultItem(id){
+    const v = vaultItems.find(x => x.id === id);
+    if(!v) return;
+    const url = URL.createObjectURL(v.file);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = v.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function renderVault(){
+    const list = document.getElementById('vaultList');
+    const q = (document.getElementById('vaultSearch').value || '').toLowerCase();
+    const cat = document.getElementById('vaultCategoryFilter').value;
+    let items = [...vaultItems].sort((a,b) => b.createdAt - a.createdAt);
+    if(cat) items = items.filter(v => v.category === cat);
+    if(q){
+      items = items.filter(v =>
+        v.name.toLowerCase().includes(q) ||
+        (v.category||'').toLowerCase().includes(q) ||
+        (v.notes||'').toLowerCase().includes(q)
+      );
+    }
+
+    vaultObjectUrls.forEach(u => URL.revokeObjectURL(u));
+    vaultObjectUrls = [];
+
+    if(items.length === 0){
+      list.innerHTML = '<div class="empty">No documents saved yet. Add a medical record, ID/IC, or other file above.</div>';
+      return;
+    }
+    list.innerHTML = items.map(v => {
+      const isImage = v.mimeType && v.mimeType.startsWith('image/');
+      const url = URL.createObjectURL(v.file);
+      vaultObjectUrls.push(url);
+      const dateStr = new Date(v.createdAt).toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
+      const sizeStr = formatBytes(v.size);
+      const thumb = isImage
+        ? `<img src="${url}" class="vault-thumb" alt="">`
+        : `<div class="vault-thumb vault-thumb-icon">📄</div>`;
+      return `
+        <div class="item">
+          <a href="${url}" target="_blank" rel="noopener noreferrer" title="Open ${escapeHtml(v.name)}">${thumb}</a>
+          <div class="item-main">
+            <div class="item-title">${escapeHtml(v.name)}</div>
+            <div class="item-meta"><span>📅 ${dateStr}</span><span>💾 ${sizeStr}</span></div>
+            ${v.notes ? `<div class="item-notes">${escapeHtml(v.notes)}</div>` : ''}
+            ${v.category ? `<span class="tag ${categorySlug(v.category)}">${escapeHtml(v.category)}</span>` : ''}
+          </div>
+          <div class="item-actions">
+            <button onclick="downloadVaultItem('${v.id}')">Download</button>
+            <button onclick="editVaultItem('${v.id}')">Edit</button>
+            <button class="danger" onclick="deleteVaultItem('${v.id}')">Delete</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function blobToBase64(blob){
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  function base64ToBlob(base64, mimeType){
+    const byteChars = atob(base64);
+    const byteNumbers = new Array(byteChars.length);
+    for(let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+    return new Blob([new Uint8Array(byteNumbers)], { type: mimeType });
+  }
+
+  async function exportVault(){
+    if(vaultItems.length === 0){
+      showToast('No vault documents to export.');
+      return;
+    }
+    showToast('Preparing vault backup...');
+    try{
+      const payload = { vault: [], exportedAt: new Date().toISOString() };
+      for(const v of vaultItems){
+        const base64 = await blobToBase64(v.file);
+        payload.vault.push({ id:v.id, name:v.name, category:v.category, notes:v.notes, mimeType:v.mimeType, size:v.size, createdAt:v.createdAt, dataBase64: base64 });
+      }
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'personal-hub-vault-' + new Date().toISOString().slice(0,10) + '.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      showToast('Vault backup downloaded. It contains your files unencrypted — keep it somewhere safe.');
+    }catch(e){
+      showToast('Could not export vault backup: ' + e.message);
+    }
+  }
+
+  function importVaultFile(event){
+    const file = event.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try{
+        const data = JSON.parse(e.target.result);
+        if(!Array.isArray(data.vault)) throw new Error('This file has no vault data');
+        if(!confirm('This will add ' + data.vault.length + ' document(s) from the backup into your vault. Continue?')) return;
+        for(const entry of data.vault){
+          const blob = base64ToBlob(entry.dataBase64, entry.mimeType);
+          const item = { id: entry.id || uid(), name: entry.name, category: entry.category, notes: entry.notes, mimeType: entry.mimeType, size: entry.size, createdAt: entry.createdAt || Date.now(), file: blob };
+          await vaultPut(item);
+          const idx = vaultItems.findIndex(x => x.id === item.id);
+          if(idx >= 0) vaultItems[idx] = item; else vaultItems.push(item);
+        }
+        renderVault();
+        showToast('Imported vault backup.');
+      }catch(err){
+        showToast('Could not import vault backup: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  }
+
+  // ---------- Export / Import (scoped to the active tab) ----------
+  function exportData(){
+    if(currentTab === 'vault'){ exportVault(); return; }
+    const key = currentTab === 'reminders' ? 'reminders' : 'links';
+    const label = currentTab === 'reminders' ? 'reminders' : 'links';
+    const payload = { [key]: state[key], exportedAt: new Date().toISOString() };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'personal-hub-' + label + '-' + new Date().toISOString().slice(0,10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    showToast('Exported ' + label + '.');
+  }
+
+  function importData(event){
+    if(currentTab === 'vault'){ importVaultFile(event); return; }
+    const file = event.target.files[0];
+    if(!file) return;
+    const key = currentTab === 'reminders' ? 'reminders' : 'links';
+    const label = currentTab === 'reminders' ? 'reminders' : 'links';
+    const reader = new FileReader();
+    reader.onload = e => {
+      try{
+        const data = JSON.parse(e.target.result);
+        if(!Array.isArray(data[key])){
+          throw new Error('This file has no ' + label + ' data');
+        }
+        if(!confirm('This will replace your current ' + label + ' with the imported file. Continue?')) return;
+        state[key] = data[key];
+        saveState();
+        renderReminders();
+        renderLinks();
+        showToast('Imported ' + label + '.');
+      }catch(err){
+        showToast('Could not import file: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  }
+
+  // ---------- Utils ----------
+  function escapeHtml(str){
+    const div = document.createElement('div');
+    div.textContent = str == null ? '' : String(str);
+    return div.innerHTML;
+  }
+
+  // ---------- Init ----------
+  function init(){
+    const now = new Date();
+    document.getElementById('r-date').value = now.toISOString().slice(0,10);
+    renderReminders();
+    renderLinks();
+    loadVaultItems();
+    checkDueReminders();
+    setInterval(checkDueReminders, 20000);
+    setInterval(renderReminders, 60000); // keep badges (overdue/due-soon) fresh even if nothing fires
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>
