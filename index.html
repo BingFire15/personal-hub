@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Personal Hub</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root{
     --bg:#0f1115;
@@ -264,6 +265,8 @@
     <button class="tab-btn" data-tab="vault" onclick="switchTab('vault')">🔒 Vault</button>
   </div>
   <div class="header-actions">
+    <span id="driveSyncStatus" style="font-size:12px; color:var(--muted); align-self:center; white-space:nowrap;">Drive: not connected</span>
+    <button class="icon-btn" id="driveBtn" onclick="handleDriveButtonClick()">☁️ Connect Drive</button>
     <button class="icon-btn" onclick="enableNotifications()">🔔 Enable alerts</button>
     <button class="icon-btn" id="exportBtn" onclick="exportData()">⬆ Export Reminders</button>
     <button class="icon-btn" id="importBtn" onclick="document.getElementById('importFile').click()">⬇ Import Reminders</button>
@@ -384,7 +387,7 @@
         <button class="primary" onclick="saveVaultItem()" id="v-save-btn">Add to Vault</button>
         <button class="secondary hidden" id="v-cancel-btn" onclick="cancelVaultEdit()">Cancel</button>
       </div>
-      <div class="hint">Files are stored only in this browser (IndexedDB) and are not encrypted or synced automatically. Use "Export Vault Backup" below to download a backup file you can keep somewhere safe, move to another device, or hand to Claude to upload to your connected Google Drive.</div>
+      <div class="hint">Files are stored in this browser (IndexedDB) and, once you connect Google Drive above, are automatically backed up to a file in your Drive so they're available on your other devices. You can still use "Export Vault Backup" below for an extra manual copy.</div>
     </div>
 
     <div class="panel">
@@ -533,6 +536,7 @@
     saveState();
     clearReminderForm();
     renderReminders();
+    scheduleAutoPush();
   }
 
   function clearReminderForm(){
@@ -571,6 +575,7 @@
     state.reminders = state.reminders.filter(x => x.id !== id);
     saveState();
     renderReminders();
+    scheduleAutoPush();
   }
 
   function snoozeReminder(id, minutes){
@@ -583,6 +588,7 @@
     r.fired = false;
     saveState();
     renderReminders();
+    scheduleAutoPush();
   }
 
   function reminderStatus(r, now){
@@ -644,7 +650,7 @@
         changed = true;
       }
     });
-    if(changed){ saveState(); renderReminders(); }
+    if(changed){ saveState(); renderReminders(); scheduleAutoPush(); }
   }
 
   // ---------- Links ----------
@@ -669,6 +675,7 @@
     saveState();
     clearLinkForm();
     renderLinks();
+    scheduleAutoPush();
   }
 
   function clearLinkForm(){
@@ -705,6 +712,7 @@
     state.links = state.links.filter(x => x.id !== id);
     saveState();
     renderLinks();
+    scheduleAutoPush();
   }
 
   function normalizeUrl(url){
@@ -835,6 +843,7 @@
       }
       cancelVaultEdit();
       renderVault();
+      scheduleAutoPush();
       return;
     }
 
@@ -868,6 +877,7 @@
     }
     clearVaultForm();
     renderVault();
+    scheduleAutoPush();
   }
 
   function clearVaultForm(){
@@ -907,6 +917,7 @@
       await vaultDeleteDB(id);
       vaultItems = vaultItems.filter(x => x.id !== id);
       renderVault();
+      scheduleAutoPush();
     }catch(e){
       showToast('Could not delete document.');
     }
@@ -1032,12 +1043,238 @@
         }
         renderVault();
         showToast('Imported vault backup.');
+        scheduleAutoPush();
       }catch(err){
         showToast('Could not import vault backup: ' + err.message);
       }
     };
     reader.readAsText(file);
     event.target.value = '';
+  }
+
+  // ---------- Google Drive auto-sync ----------
+  const GOOGLE_CLIENT_ID = '257928718693-pkiu1gpijqr85klg2gp2c7goi3d7pgjc.apps.googleusercontent.com';
+  const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+  const DRIVE_BACKUP_FILENAME = 'personal-hub-backup.json';
+
+  let tokenClient = null;
+  let driveAccessToken = null;
+  let tokenExpiryTimer = null;
+  let driveFileId = null;
+  let autoPushTimer = null;
+  let pushInFlight = false;
+  let pushQueuedAgain = false;
+
+  function setSyncStatus(text){
+    const el = document.getElementById('driveSyncStatus');
+    if(el) el.textContent = 'Drive: ' + text;
+  }
+
+  function setDriveButtonConnected(connected){
+    const btn = document.getElementById('driveBtn');
+    if(btn) btn.textContent = connected ? '☁️ Drive connected' : '☁️ Connect Drive';
+  }
+
+  function initGoogleAuth(){
+    if(!(window.google && window.google.accounts && window.google.accounts.oauth2)){
+      setTimeout(initGoogleAuth, 300);
+      return;
+    }
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: DRIVE_SCOPE,
+      callback: onDriveTokenResponse,
+      error_callback: (err) => {
+        console.warn('Drive auth error', err);
+        setSyncStatus('sign-in not completed');
+      }
+    });
+  }
+
+  function handleDriveButtonClick(){
+    if(!tokenClient){
+      showToast('Google sign-in is still loading — try again in a moment.');
+      return;
+    }
+    if(driveAccessToken){
+      showToast('Already connected to Google Drive. Your data syncs automatically.');
+      return;
+    }
+    setSyncStatus('connecting...');
+    tokenClient.requestAccessToken({ prompt: 'consent' });
+  }
+
+  function onDriveTokenResponse(resp){
+    if(!resp || resp.error){
+      setSyncStatus('not connected');
+      setDriveButtonConnected(false);
+      return;
+    }
+    driveAccessToken = resp.access_token;
+    setDriveButtonConnected(true);
+
+    const expiresMs = (resp.expires_in || 3500) * 1000;
+    clearTimeout(tokenExpiryTimer);
+    tokenExpiryTimer = setTimeout(() => {
+      if(tokenClient) tokenClient.requestAccessToken({ prompt: '' });
+    }, Math.max(expiresMs - 60000, 30000));
+
+    pullFromDrive();
+  }
+
+  async function driveFetch(url, options){
+    options = options || {};
+    if(!driveAccessToken) throw new Error('Not signed in to Drive');
+    options.headers = Object.assign({}, options.headers, { 'Authorization': 'Bearer ' + driveAccessToken });
+    let res = await fetch(url, options);
+    if(res.status === 401){
+      // Token expired sooner than expected — ask for a fresh one and retry once.
+      await new Promise((resolve) => {
+        const prevCallback = tokenClient.callback;
+        tokenClient.callback = (resp) => { onDriveTokenResponse(resp); resolve(); };
+        tokenClient.requestAccessToken({ prompt: '' });
+        setTimeout(resolve, 5000);
+      });
+      options.headers['Authorization'] = 'Bearer ' + driveAccessToken;
+      res = await fetch(url, options);
+    }
+    return res;
+  }
+
+  function buildMultipartBody(metadata, contentType, content){
+    const boundary = 'personalhub-' + Date.now();
+    const delimiter = '\r\n--' + boundary + '\r\n';
+    const closeDelim = '\r\n--' + boundary + '--';
+    const body =
+      delimiter +
+      'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+      JSON.stringify(metadata) +
+      delimiter +
+      'Content-Type: ' + contentType + '\r\n\r\n' +
+      content +
+      closeDelim;
+    return { body, contentType: 'multipart/related; boundary="' + boundary + '"' };
+  }
+
+  async function driveFindBackupFile(){
+    const q = encodeURIComponent("name='" + DRIVE_BACKUP_FILENAME + "' and trashed=false");
+    const res = await driveFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,modifiedTime)&spaces=drive');
+    if(!res.ok) throw new Error('Drive lookup failed (' + res.status + ')');
+    const data = await res.json();
+    return (data.files && data.files.length > 0) ? data.files[0].id : null;
+  }
+
+  async function driveCreateFile(payloadStr){
+    const { body, contentType } = buildMultipartBody({ name: DRIVE_BACKUP_FILENAME }, 'application/json', payloadStr);
+    const res = await driveFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      method: 'POST',
+      headers: { 'Content-Type': contentType },
+      body
+    });
+    if(!res.ok) throw new Error('Drive create failed (' + res.status + ')');
+    const data = await res.json();
+    return data.id;
+  }
+
+  async function driveUpdateFile(fileId, payloadStr){
+    const { body, contentType } = buildMultipartBody({}, 'application/json', payloadStr);
+    const res = await driveFetch('https://www.googleapis.com/upload/drive/v3/files/' + fileId + '?uploadType=multipart', {
+      method: 'PATCH',
+      headers: { 'Content-Type': contentType },
+      body
+    });
+    if(!res.ok) throw new Error('Drive update failed (' + res.status + ')');
+  }
+
+  async function buildBackupPayload(){
+    const vault = [];
+    for(const v of vaultItems){
+      const base64 = await blobToBase64(v.file);
+      vault.push({ id:v.id, name:v.name, category:v.category, notes:v.notes, mimeType:v.mimeType, size:v.size, createdAt:v.createdAt, dataBase64: base64 });
+    }
+    return {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      reminders: state.reminders,
+      links: state.links,
+      vault
+    };
+  }
+
+  async function applyBackupPayload(data){
+    if(Array.isArray(data.reminders)) state.reminders = data.reminders;
+    if(Array.isArray(data.links)) state.links = data.links;
+    saveState();
+
+    if(Array.isArray(data.vault)){
+      const existing = await vaultGetAllDB();
+      for(const item of existing){ await vaultDeleteDB(item.id); }
+      vaultItems = [];
+      for(const entry of data.vault){
+        const blob = base64ToBlob(entry.dataBase64, entry.mimeType);
+        const item = { id: entry.id, name: entry.name, category: entry.category, notes: entry.notes, mimeType: entry.mimeType, size: entry.size, createdAt: entry.createdAt, file: blob };
+        await vaultPut(item);
+        vaultItems.push(item);
+      }
+    }
+
+    renderReminders();
+    renderLinks();
+    renderVault();
+  }
+
+  async function pullFromDrive(){
+    setSyncStatus('checking for existing backup...');
+    try{
+      driveFileId = await driveFindBackupFile();
+      if(!driveFileId){
+        setSyncStatus('connected — creating first backup...');
+        await pushToDrive();
+        return;
+      }
+      const res = await driveFetch('https://www.googleapis.com/drive/v3/files/' + driveFileId + '?alt=media');
+      if(!res.ok) throw new Error('Drive download failed (' + res.status + ')');
+      const data = await res.json();
+      await applyBackupPayload(data);
+      setSyncStatus('synced ' + new Date().toLocaleTimeString());
+    }catch(e){
+      console.warn('Drive pull failed', e);
+      setSyncStatus('could not load from Drive');
+    }
+  }
+
+  function scheduleAutoPush(){
+    if(!driveAccessToken) return;
+    clearTimeout(autoPushTimer);
+    autoPushTimer = setTimeout(pushToDrive, 1500);
+  }
+
+  async function pushToDrive(){
+    if(!driveAccessToken) return;
+    if(pushInFlight){ pushQueuedAgain = true; return; }
+    pushInFlight = true;
+    setSyncStatus('syncing...');
+    try{
+      const payload = await buildBackupPayload();
+      const payloadStr = JSON.stringify(payload);
+      if(!driveFileId){
+        driveFileId = await driveFindBackupFile();
+      }
+      if(driveFileId){
+        await driveUpdateFile(driveFileId, payloadStr);
+      } else {
+        driveFileId = await driveCreateFile(payloadStr);
+      }
+      setSyncStatus('synced ' + new Date().toLocaleTimeString());
+    }catch(e){
+      console.warn('Drive push failed', e);
+      setSyncStatus('sync failed — will retry on next change');
+    }
+    pushInFlight = false;
+    if(pushQueuedAgain){
+      pushQueuedAgain = false;
+      scheduleAutoPush();
+    }
   }
 
   // ---------- Export / Import (scoped to the active tab) ----------
@@ -1075,6 +1312,7 @@
         renderReminders();
         renderLinks();
         showToast('Imported ' + label + '.');
+        scheduleAutoPush();
       }catch(err){
         showToast('Could not import file: ' + err.message);
       }
@@ -1100,6 +1338,7 @@
     checkDueReminders();
     setInterval(checkDueReminders, 20000);
     setInterval(renderReminders, 60000); // keep badges (overdue/due-soon) fresh even if nothing fires
+    initGoogleAuth();
   }
 
   document.addEventListener('DOMContentLoaded', init);
